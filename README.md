@@ -50,13 +50,30 @@ A browser-specific anti-surveillance userscript, specially designed for online c
 ## 📥 安装指南 | Installation Guide
 
 ### 前置要求 | Prerequisites
-1. 安装用户脚本管理器：[Tampermonkey](https://www.tampermonkey.net/)（推荐）
+1. 安装用户脚本管理器（强烈推荐脚本猫）：
+   - 🌟 **[ScriptCat 脚本猫](https://github.com/scriptscat/scriptcat)** ⭐ **强烈推荐** - 功能最强大的用户脚本管理器
+   - [Tampermonkey](https://www.tampermonkey.net/) - 传统选择
 2. 确保浏览器允许安装用户脚本
 3. 建议使用Chrome、Firefox或Edge浏览器
 
-Install userscript manager: [Tampermonkey](https://www.tampermonkey.net/) (recommended)
+Install userscript manager (ScriptCat highly recommended):
+- 🌟 **[ScriptCat](https://github.com/scriptscat/scriptcat)** ⭐ **Highly Recommended** - Most powerful userscript manager
+- [Tampermonkey](https://www.tampermonkey.net/) - Traditional choice
 Ensure browser allows userscript installation
 Chrome, Firefox, or Edge browsers recommended
+
+#### 🌟 为什么推荐 ScriptCat？| Why ScriptCat?
+- **🔄 云同步**: 脚本跨设备同步，换浏览器或重装系统轻松恢复
+- **⚡ 后台脚本**: 创新的后台执行机制，脚本持续运行不受页面限制
+- **🛡️ 安全可靠**: 沙盒机制隔离运行，权限管理更严格
+- **💻 开发体验**: 内置智能代码编辑器，语法高亮和智能补全
+- **🔧 功能强大**: 提供比Tampermonkey更丰富的API，解锁更多可能性
+
+**🔄 Cloud Sync**: Sync scripts across devices, easily restore when switching browsers
+**⚡ Background Scripts**: Innovative background execution, scripts run continuously without page limits
+**🛡️ Security & Reliability**: Sandbox isolation, stricter permission management
+**💻 Development Experience**: Built-in smart editor with syntax highlighting and completion
+**🔧 Powerful Features**: Richer APIs than Tampermonkey, unlocking more possibilities
 
 ### 安装步骤 | Installation Steps
 
@@ -64,22 +81,28 @@ Chrome, Firefox, or Edge browsers recommended
 1. 点击下方脚本文件：
    - [Anti-surveillance script.js](./Anti-surveillance%20script.js) (英文版 | English)
    - [反监控脚本.js](./反监控脚本.js) (中文版 | Chinese)
-2. Tampermonkey会自动打开安装对话框
+2. 脚本管理器会自动打开安装对话框：
+   - **ScriptCat**: 自动识别并提示安装
+   - **Tampermonkey**: 传统安装流程
 3. 查看权限并点击"安装"
 
 Click on script files below:
-Tampermonkey will automatically open installation dialog
+Script manager will automatically open installation dialog:
+**ScriptCat**: Auto-detect and prompt for installation
+**Tampermonkey**: Traditional installation process
 Review permissions and click "Install"
 
 #### 方法二：手动安装 | Manual Installation
 1. 下载脚本文件到本地
-2. 打开Tampermonkey管理面板
-3. 点击"实用工具"标签
-4. 粘贴脚本内容并保存
+2. 打开脚本管理器：
+   - **ScriptCat**: 点击"+"号创建新脚本
+   - **Tampermonkey**: 点击"实用工具"标签
+3. 粘贴脚本内容并保存
 
 Download script file locally
-Open Tampermonkey dashboard
-Click "Utilities" tab
+Open script manager:
+**ScriptCat**: Click "+" to create new script
+**Tampermonkey**: Click "Utilities" tab
 Paste script content and save
 
 ---
@@ -93,14 +116,18 @@ Paste script content and save
 2. **启用脚本**: 脚本会自动加载并运行
 3. **配置虚拟鼠标**: 
    - 点击页面上的"反监控"按钮
-   - 或通过Tampermonkey菜单访问设置
+   - 或通过脚本管理器菜单访问设置：
+     - **ScriptCat**: 右键页面 → ScriptCat → 脚本设置
+     - **Tampermonkey**: 扩展图标 → 脚本设置
 4. **开始学习**: 享受隐私保护的学习体验
 
 **Open Online Course Platform**: Visit your online course website
 **Enable Script**: Script loads and runs automatically
 **Configure Virtual Mouse**: 
 Click "Anti-Surveillance" button on page
-Or access settings via Tampermonkey menu
+Or access settings via script manager menu:
+**ScriptCat**: Right-click page → ScriptCat → Script Settings
+**Tampermonkey**: Extension icon → Script Settings
 **Start Learning**: Enjoy privacy-protected learning experience
 
 #### 推荐设置 | Recommended Settings
@@ -289,6 +316,7 @@ anti-surveillance-script/
 - **贡献指南**: [Contributing Guidelines](./docs/CONTRIBUTING.md)
 - **免责声明**: [Disclaimer](./docs/DISCLAIMER.md)
 - **更新日志**: [Changelog](./docs/CHANGELOG.md)
+- **🌟 ScriptCat 推荐**: [为什么选择 ScriptCat](./docs/ScriptCat-推荐.md)
 - **问题反馈**: [GitHub Issues](../../issues)
 
 ---
@@ -328,10 +356,16 @@ Welcome to contribute code, report issues, or suggest improvements!
 - ✅ Opera
 
 ### 用户脚本管理器 | Userscript Managers
-- ✅ Tampermonkey (推荐 | Recommended)
-- ✅ Greasemonkey
-- ✅ Violentmonkey
+- 🌟 **ScriptCat 脚本猫** ⭐ **强烈推荐** - 功能最强大，云同步，后台脚本
+- ✅ Tampermonkey - 传统选择，广泛兼容
+- ✅ Greasemonkey - Firefox原生支持
+- ✅ Violentmonkey - 轻量级选择
 - ✅ 其他兼容管理器 | Other compatible managers
+
+**ScriptCat Features**: Cloud sync, background scripts, smart editor, enhanced security
+**Tampermonkey**: Traditional choice, wide compatibility
+**Greasemonkey**: Firefox native support
+**Violentmonkey**: Lightweight option
 
 ---
 
