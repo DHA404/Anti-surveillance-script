@@ -16,13 +16,135 @@
 (function() {
     'use strict';
     
+    // 调试级别定义
+    const DEBUG_LEVELS = {
+        ERROR: 0,    // 仅错误信息
+        WARN: 1,     // 警告信息  
+        INFO: 2,     // 一般信息
+        DEBUG: 3,    // 调试信息
+        VERBOSE: 4   // 详细信息
+    };
+
+    // 调试级别映射
+    const DEBUG_LEVEL_NAMES = {
+        'ERROR': DEBUG_LEVELS.ERROR,
+        'WARN': DEBUG_LEVELS.WARN,
+        'INFO': DEBUG_LEVELS.INFO,
+        'DEBUG': DEBUG_LEVELS.DEBUG,
+        'VERBOSE': DEBUG_LEVELS.VERBOSE
+    };
+
+    /**
+     * 智能调试日志管理器
+     * 提供分级、分类的调试输出控制
+     */
+    class DebugLogger {
+        constructor() {
+            this.currentLevel = DEBUG_LEVELS.ERROR;
+            this.enabled = false;
+            this.categories = {
+                virtualMouse: false,
+                eventBlocking: false,
+                deviceInfo: false,
+                config: false,
+                animation: false
+            };
+            this.consoleOnly = true;
+            this.timestamp = true;
+        }
+
+        /**
+         * 更新调试配置
+         */
+        updateConfig(config) {
+            if (!config) return;
+            
+            this.enabled = config.enabled || false;
+            this.currentLevel = DEBUG_LEVEL_NAMES[config.level] || DEBUG_LEVELS.ERROR;
+            this.categories = { ...this.categories, ...config.categories };
+            this.consoleOnly = config.consoleOnly !== false;
+            this.timestamp = config.timestamp !== false;
+        }
+
+        /**
+         * 检查是否应该输出日志
+         */
+        shouldLog(level, category) {
+            if (!this.enabled) return false;
+            if (level > this.currentLevel) return false;
+            if (category && !this.categories[category]) return false;
+            return true;
+        }
+
+        /**
+         * 格式化日志前缀
+         */
+        formatPrefix(level, category) {
+            const levelNames = ['ERROR', 'WARN', 'INFO', 'DEBUG', 'VERBOSE'];
+            const levelName = levelNames[level] || 'UNKNOWN';
+            const timestamp = this.timestamp ? `[${new Date().toISOString()}] ` : '';
+            const categoryStr = category ? `[${category}] ` : '';
+            return `${timestamp}[反监控][${levelName}]${categoryStr}`;
+        }
+
+        /**
+         * 输出日志
+         */
+        log(level, category, ...args) {
+            if (!this.shouldLog(level, category)) return;
+
+            const prefix = this.formatPrefix(level, category);
+            const message = args.length === 1 && typeof args[0] === 'string' ? args[0] : args;
+            
+            switch (level) {
+                case DEBUG_LEVELS.ERROR:
+                    console.error(prefix, message);
+                    break;
+                case DEBUG_LEVELS.WARN:
+                    console.warn(prefix, message);
+                    break;
+                case DEBUG_LEVELS.INFO:
+                    console.info(prefix, message);
+                    break;
+                case DEBUG_LEVELS.DEBUG:
+                case DEBUG_LEVELS.VERBOSE:
+                default:
+                    console.log(prefix, message);
+                    break;
+            }
+        }
+
+        // 便捷方法
+        error(category, ...args) { this.log(DEBUG_LEVELS.ERROR, category, ...args); }
+        warn(category, ...args) { this.log(DEBUG_LEVELS.WARN, category, ...args); }
+        info(category, ...args) { this.log(DEBUG_LEVELS.INFO, category, ...args); }
+        debug(category, ...args) { this.log(DEBUG_LEVELS.DEBUG, category, ...args); }
+        verbose(category, ...args) { this.log(DEBUG_LEVELS.VERBOSE, category, ...args); }
+    }
+
+    // 创建全局调试日志实例
+    const debugLogger = new DebugLogger();
+
     // 调试模式开关：生产环境设为false，开发调试时设为true
     const DEBUG_MODE = false;
     
-    // 统一的日志辅助函数
+    // 统一的日志辅助函数（保持向后兼容）
     function debugLog(...args) {
         if (DEBUG_MODE) {
             console.log('[反监控]', ...args);
+        }
+    }
+
+    /**
+     * 更新调试配置
+     * 从用户配置中读取调试设置并应用到调试日志器
+     */
+    function updateDebugConfig() {
+        try {
+            const config = getCurrentSiteConfig().debugConfig || {};
+            debugLogger.updateConfig(config);
+        } catch (e) {
+            console.error('[反监控] 更新调试配置失败:', e);
         }
     }
     
@@ -124,6 +246,12 @@
     };
     
     console.log('[反监控脚本] 开始加载...');
+
+    // 初始化调试配置
+    updateDebugConfig();
+
+    // 初始化虚拟鼠标动画样式
+    initVirtualMouseAnimations();
 
     /**
      * 默认网站配置模板 - 所有拦截项默认关闭
@@ -277,6 +405,27 @@
                 enabled: false,                  // 是否启用固定位置
                 x: 0,                            // 固定X坐标
                 y: 0                             // 固定Y坐标
+            },
+            animation: {                       // 动画效果配置
+                enabled: true,                 // 是否启用动画
+                breathing: true,               // 呼吸缩放动画
+                pulse: false,                  // 脉冲波纹效果（默认关闭）
+                intensity: 'medium',           // 动画强度：low/medium/high
+                duration: 2000,                // 动画周期（毫秒）
+                performanceMode: 'auto'        // 性能模式：auto/high/low
+            },
+            debugConfig: {                     // 调试输出配置
+                enabled: false,                // 是否启用调试输出
+                level: 'ERROR',                // 输出级别：ERROR/WARN/INFO/DEBUG/VERBOSE
+                categories: {                  // 分类控制
+                    virtualMouse: false,       // 虚拟鼠标相关
+                    eventBlocking: false,      // 事件拦截相关
+                    deviceInfo: false,         // 设备信息相关
+                    config: false,             // 配置相关
+                    animation: false           // 动画相关
+                },
+                consoleOnly: true,             // 仅在控制台显示
+                timestamp: true                // 显示时间戳
             }
         }
     };
@@ -1590,17 +1739,11 @@
             const mainCursor = virtualMouse.querySelector('.virtual-mouse-main');
             const clickIndicator = virtualMouse.querySelector('.virtual-mouse-click');
             
-            // 根据路径模式设置不同的过渡效果
-            if (config.pathMode === 'smooth') {
-                // 平滑模式使用较长的过渡时间
-                virtualMouse.style.transition = 'left 0.3s ease-out, top 0.3s ease-out';
-            } else if (config.pathMode === 'hover') {
-                // 悬停模式使用中等过渡时间
-                virtualMouse.style.transition = 'left 0.2s ease-out, top 0.2s ease-out';
-            } else {
-                // 其他模式使用短过渡时间，添加轻微抖动效果
-                virtualMouse.style.transition = 'left 0.1s ease-out, top 0.1s ease-out';
-            }
+            // 禁用容器的过渡效果，确保实时位置更新
+            // 虚拟鼠标移动应该通过JavaScript控制，而不是CSS过渡
+            virtualMouse.style.transition = 'none';
+            
+            console.log('[反监控] 已禁用虚拟鼠标容器过渡效果，确保实时更新');
             
             // 主光标样式 - 使用用户设置的光标大小
             const cursorSize = config.cursorSize || 40; // 直接使用用户设置的值，不再限制范围
@@ -1631,10 +1774,27 @@
             
             // 确保虚拟鼠标可见 - 强制显示
             const isEnabled = getCurrentSiteConfig().virtualMouse?.enabled || false;
-            virtualMouse.style.display = isEnabled ? 'block' : 'none';
-            if (isEnabled) {
+            const isMainWindow = isInMainWindow();
+            
+            console.log('[反监控] 虚拟鼠标显示状态检查:', {
+                isEnabled: isEnabled,
+                isMainWindow: isMainWindow,
+                virtualMouseExists: !!virtualMouse,
+                inDocument: virtualMouse ? document.body.contains(virtualMouse) : false
+            });
+            
+            if (isEnabled && isMainWindow && virtualMouse && document.body.contains(virtualMouse)) {
+                virtualMouse.style.display = 'block';
                 virtualMouse.style.visibility = 'visible';
                 virtualMouse.style.opacity = '1';
+            } else {
+                virtualMouse.style.display = 'none';
+                console.log('[反监控] 虚拟鼠标已隐藏，原因:', {
+                    isEnabled: isEnabled,
+                    isMainWindow: isMainWindow,
+                    virtualMouseExists: !!virtualMouse,
+                    inDocument: virtualMouse ? document.body.contains(virtualMouse) : false
+                });
             }
             
             // 确保z-index足够高
@@ -1645,9 +1805,119 @@
             virtualMouse.style.pointerEvents = 'none';
             virtualMouse.style.transform = 'translate(-50%, -50%)';
             
+            // 应用动画效果
+            applyVirtualMouseAnimations(virtualMouse, mainCursor, config);
+            
             console.log(`[反监控] 虚拟鼠标样式已更新 - 显示: ${isEnabled}, 大小: ${cursorSize}px, 主光标显示: ${mainCursor.style.display}`);
         } catch (e) {
             console.error('[反监控脚本] 更新虚拟鼠标样式失败:', e);
+        }
+    }
+    
+    /**
+     * 应用虚拟鼠标动画效果
+     * 根据配置动态添加或移除动画类
+     */
+    function applyVirtualMouseAnimations(virtualMouse, mainCursor, config) {
+        try {
+            // 获取动画配置
+            const animationConfig = config.animation || {};
+            const isEnabled = animationConfig.enabled !== false;
+            const breathingEnabled = animationConfig.breathing !== false;
+            const intensity = animationConfig.intensity || 'medium';
+            const performanceMode = animationConfig.performanceMode || 'auto';
+            
+            // 清除所有动画类
+            virtualMouse.classList.remove('virtual-mouse-breathing', 'virtual-mouse-appear', 'virtual-mouse-disappear',
+                                       'virtual-mouse-low-intensity', 'virtual-mouse-high-intensity',
+                                       'virtual-mouse-performance-low', 'virtual-mouse-performance-high');
+            
+            if (mainCursor) {
+                mainCursor.classList.remove('virtual-mouse-breathing');
+            }
+            
+            if (!isEnabled) {
+                debugLogger.debug('animation', '虚拟鼠标动画已禁用');
+                return;
+            }
+            
+            // 检测性能模式
+            const detectedPerformanceMode = detectPerformanceMode(performanceMode);
+            
+            // 应用强度级别
+            if (intensity === 'low') {
+                virtualMouse.classList.add('virtual-mouse-low-intensity');
+            } else if (intensity === 'high') {
+                virtualMouse.classList.add('virtual-mouse-high-intensity');
+            }
+            
+            // 应用性能模式
+            if (detectedPerformanceMode === 'low') {
+                virtualMouse.classList.add('virtual-mouse-performance-low');
+            } else if (detectedPerformanceMode === 'high') {
+                virtualMouse.classList.add('virtual-mouse-performance-high');
+            }
+            
+            // 应用呼吸动画
+            if (breathingEnabled && mainCursor && detectedPerformanceMode !== 'minimal') {
+                mainCursor.classList.add('virtual-mouse-breathing');
+                
+                // 设置动画持续时间
+                const duration = (animationConfig.duration || 2000) / 1000;
+                mainCursor.style.animationDuration = `${duration}s`;
+            }
+            
+            debugLogger.debug('animation', '虚拟鼠标动画已应用:', {
+                enabled: isEnabled,
+                breathing: breathingEnabled,
+                intensity: intensity,
+                performanceMode: detectedPerformanceMode,
+                duration: animationConfig.duration || 2000
+            });
+            
+        } catch (e) {
+            console.error('[反监控] 应用虚拟鼠标动画失败:', e);
+        }
+    }
+    
+    /**
+     * 检测性能模式
+     * 根据设备性能和用户设置自动调整动画复杂度
+     */
+    function detectPerformanceMode(userMode) {
+        if (userMode === 'high') return 'high';
+        if (userMode === 'low') return 'low';
+        
+        // 自动检测模式
+        try {
+            // 检查硬件并发数
+            const concurrency = navigator.hardwareConcurrency || 4;
+            
+            // 检查设备内存
+            const memory = navigator.deviceMemory || 4;
+            
+            // 检查是否为移动设备
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            // 检查是否启用了减少动画偏好
+            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            
+            if (prefersReducedMotion) {
+                return 'minimal';
+            }
+            
+            if (isMobile || concurrency < 4 || memory < 2) {
+                return 'low';
+            }
+            
+            if (concurrency >= 8 && memory >= 8) {
+                return 'high';
+            }
+            
+            return 'medium';
+        } catch (e) {
+            console.warn('[反监控] 性能检测失败，使用默认模式:', e);
+            return 'medium';
         }
     }
     
@@ -2545,12 +2815,12 @@
             smoothMoveState.moveProgress = 0;
             
             console.log('[反监控] 重置路径模式状态变量和平滑移动状态');
-            
-            // 初始化平滑移动状态
-            smoothMoveState.targetX = currentPos.x;
-            smoothMoveState.targetY = currentPos.y;
-            smoothMoveState.currentDisplayX = currentPos.x;
-            smoothMoveState.currentDisplayY = currentPos.y;
+            console.log('[反监控] 初始化坐标:', {
+                targetX: smoothMoveState.targetX,
+                targetY: smoothMoveState.targetY,
+                currentDisplayX: smoothMoveState.currentDisplayX,
+                currentDisplayY: smoothMoveState.currentDisplayY
+            });
             
             // 初始化贝塞尔曲线和物理模型参数
             smoothMoveState.bezierPoints = [];
@@ -2669,6 +2939,17 @@
                 // 使用贝塞尔曲线和物理模型实现更真实的移动
                 let displayX, displayY;
                 
+                // 初始化显示位置，确保有有效的坐标值
+                if (smoothMoveState.currentDisplayX === null || smoothMoveState.currentDisplayX === undefined ||
+                    smoothMoveState.currentDisplayY === null || smoothMoveState.currentDisplayY === undefined) {
+                    smoothMoveState.currentDisplayX = currentPos.x || window.innerWidth / 2;
+                    smoothMoveState.currentDisplayY = currentPos.y || window.innerHeight / 2;
+                    console.log('[反监控] 初始化显示位置:', {
+                        currentDisplayX: smoothMoveState.currentDisplayX,
+                        currentDisplayY: smoothMoveState.currentDisplayY
+                    });
+                }
+                
                 // 检查是否应该暂停移动
                 if (shouldPause()) {
                     // 暂停时保持当前位置
@@ -2738,11 +3019,15 @@
                 }
                 
                 // 检查是否在主窗口且虚拟鼠标存在
-                if (virtualMouse && window === window.top) {
+                if (virtualMouse && window === window.top && document.body.contains(virtualMouse)) {
+                    // 边界检查，确保坐标在屏幕范围内
+                    const boundedX = Math.max(0, Math.min(window.innerWidth, displayX));
+                    const boundedY = Math.max(0, Math.min(window.innerHeight, displayY));
+                    
                     // 只在主窗口中更新DOM元素的位置
                     // 由于使用了transform: translate(-50%, -50%)，直接设置left和top即可
-                    virtualMouse.style.left = `${displayX}px`;
-                    virtualMouse.style.top = `${displayY}px`;
+                    virtualMouse.style.left = `${boundedX}px`;
+                    virtualMouse.style.top = `${boundedY}px`;
                     
                     // 确保虚拟鼠标可见
                     virtualMouse.style.display = 'block';
@@ -2750,10 +3035,12 @@
                     virtualMouse.style.opacity = '1';
                     
                     console.log('[反监控] 更新虚拟鼠标位置:', {
+                        originalX: displayX,
+                        originalY: displayY,
+                        boundedX: boundedX,
+                        boundedY: boundedY,
                         targetX: smoothMoveState.targetX,
                         targetY: smoothMoveState.targetY,
-                        displayX: displayX,
-                        displayY: displayY,
                         progress: smoothMoveState.moveProgress,
                         left: virtualMouse.style.left,
                         top: virtualMouse.style.top
@@ -2837,9 +3124,19 @@
                     mainCursor.style.opacity = '1';
                 }
                 
-                // 设置初始位置
-                virtualMouse.style.left = `${smoothMoveState.currentDisplayX}px`;
-                virtualMouse.style.top = `${smoothMoveState.currentDisplayY}px`;
+                // 设置初始位置，确保坐标有效
+                const initialX = smoothMoveState.currentDisplayX || window.innerWidth / 2;
+                const initialY = smoothMoveState.currentDisplayY || window.innerHeight / 2;
+                
+                virtualMouse.style.left = `${initialX}px`;
+                virtualMouse.style.top = `${initialY}px`;
+                
+                console.log('[反监控] 设置虚拟鼠标初始位置:', {
+                    initialX: initialX,
+                    initialY: initialY,
+                    currentDisplayX: smoothMoveState.currentDisplayX,
+                    currentDisplayY: smoothMoveState.currentDisplayY
+                });
                 
                 debugLog('虚拟鼠标元素状态:', {
                     display: virtualMouse.style.display,
@@ -3712,6 +4009,68 @@
                         </div>
                     </div>
 
+                    <!-- 调试输出控制 -->
+                    <div class="config-section">
+                        <h4>调试输出控制</h4>
+                        <p class="config-hint">控制控制台调试信息的输出级别，减少控制台信息干扰</p>
+                        
+                        <div class="config-item">
+                            <label>
+                                <input type="checkbox" id="debug-enabled">
+                                启用调试输出
+                            </label>
+                            <p class="config-hint">开启后将显示相应级别的调试信息</p>
+                        </div>
+                        
+                        <div class="config-item">
+                            <label for="debug-level">输出级别:</label>
+                            <select id="debug-level">
+                                <option value="ERROR">仅错误 - 只显示关键错误信息</option>
+                                <option value="WARN">错误和警告 - 显示错误和警告信息</option>
+                                <option value="INFO">一般信息 - 显示基本运行信息</option>
+                                <option value="DEBUG">调试信息 - 显示详细调试信息</option>
+                                <option value="VERBOSE">详细信息 - 显示所有调试信息</option>
+                            </select>
+                            <p class="config-hint">选择要显示的调试信息详细程度</p>
+                        </div>
+                        
+                        <div class="config-item">
+                            <label>分类控制:</label>
+                            <div style="margin-top: 5px; display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+                                <label>
+                                    <input type="checkbox" id="debug-virtual-mouse"> 虚拟鼠标
+                                </label>
+                                <label>
+                                    <input type="checkbox" id="debug-event-blocking"> 事件拦截
+                                </label>
+                                <label>
+                                    <input type="checkbox" id="debug-device-info"> 设备信息
+                                </label>
+                                <label>
+                                    <input type="checkbox" id="debug-config"> 配置管理
+                                </label>
+                                <label>
+                                    <input type="checkbox" id="debug-animation"> 动画效果
+                                </label>
+                            </div>
+                            <p class="config-hint">按功能模块控制调试信息的显示</p>
+                        </div>
+                        
+                        <div class="config-item">
+                            <label>
+                                <input type="checkbox" id="debug-timestamp" checked>
+                                显示时间戳
+                            </label>
+                            <p class="config-hint">在调试信息前显示时间戳</p>
+                        </div>
+                        
+                        <div class="config-item">
+                            <button id="test-debug-output">测试调试输出</button>
+                            <button id="clear-debug-output" style="margin-left: 5px;">清空控制台</button>
+                            <p class="config-hint">测试当前调试配置的输出效果</p>
+                        </div>
+                    </div>
+
                     <!-- 反监控按钮配置 -->
                     <div class="config-section">
                         <h4>反监控按钮配置</h4>
@@ -4295,6 +4654,109 @@
                 showClickEffect();
             });
 
+            // 调试输出控制事件处理器
+            const debugEnabled = document.getElementById('debug-enabled');
+            const debugLevel = document.getElementById('debug-level');
+            const debugTimestamp = document.getElementById('debug-timestamp');
+            const debugCategories = {
+                virtualMouse: document.getElementById('debug-virtual-mouse'),
+                eventBlocking: document.getElementById('debug-event-blocking'),
+                deviceInfo: document.getElementById('debug-device-info'),
+                config: document.getElementById('debug-config'),
+                animation: document.getElementById('debug-animation')
+            };
+
+            // 调试输出开关变化
+            debugEnabled.addEventListener('change', function() {
+                updateDebugConfigFromUI();
+            });
+
+            // 调试级别变化
+            debugLevel.addEventListener('change', function() {
+                updateDebugConfigFromUI();
+            });
+
+            // 时间戳开关变化
+            debugTimestamp.addEventListener('change', function() {
+                updateDebugConfigFromUI();
+            });
+
+            // 分类控制变化
+            Object.keys(debugCategories).forEach(category => {
+                debugCategories[category].addEventListener('change', function() {
+                    updateDebugConfigFromUI();
+                });
+            });
+
+            // 测试调试输出
+            document.getElementById('test-debug-output').addEventListener('click', function() {
+                testDebugOutput();
+            });
+
+            // 清空控制台
+            document.getElementById('clear-debug-output').addEventListener('click', function() {
+                console.clear();
+                debugLogger.info('config', '控制台已清空');
+            });
+
+            /**
+             * 从UI更新调试配置
+             */
+            function updateDebugConfigFromUI() {
+                try {
+                    const currentConfig = getCurrentSiteConfig();
+                    
+                    // 更新调试配置
+                    if (!currentConfig.debugConfig) {
+                        currentConfig.debugConfig = {};
+                    }
+                    
+                    currentConfig.debugConfig.enabled = debugEnabled.checked;
+                    currentConfig.debugConfig.level = debugLevel.value;
+                    currentConfig.debugConfig.timestamp = debugTimestamp.checked;
+                    
+                    // 更新分类控制
+                    if (!currentConfig.debugConfig.categories) {
+                        currentConfig.debugConfig.categories = {};
+                    }
+                    
+                    Object.keys(debugCategories).forEach(category => {
+                        currentConfig.debugConfig.categories[category] = debugCategories[category].checked;
+                    });
+                    
+                    // 应用到调试日志器
+                    debugLogger.updateConfig(currentConfig.debugConfig);
+                    
+                    // 保存配置
+                    saveCurrentSiteConfig();
+                    
+                    debugLogger.info('config', '调试配置已更新:', currentConfig.debugConfig);
+                } catch (e) {
+                    console.error('[反监控] 更新调试配置失败:', e);
+                }
+            }
+
+            /**
+             * 测试调试输出
+             */
+            function testDebugOutput() {
+                debugLogger.error('test', '这是一条错误信息测试');
+                debugLogger.warn('test', '这是一条警告信息测试');
+                debugLogger.info('test', '这是一般信息测试');
+                debugLogger.debug('test', '这是调试信息测试');
+                debugLogger.verbose('test', '这是详细信息测试');
+                
+                // 测试分类输出
+                debugLogger.error('virtualMouse', '虚拟鼠标错误测试');
+                debugLogger.warn('eventBlocking', '事件拦截警告测试');
+                debugLogger.info('deviceInfo', '设备信息测试');
+                debugLogger.debug('config', '配置管理调试测试');
+                debugLogger.verbose('animation', '动画效果详细测试');
+                
+                console.log('=== 调试输出测试完成 ===');
+                console.log('当前配置:', debugLogger);
+            }
+
             // 保存配置
             document.getElementById('save-config').addEventListener('click', () => {
                 try {
@@ -4658,6 +5120,25 @@
                 if (currentSiteConfig.stats) {
                     document.getElementById('stats-enabled').checked = currentSiteConfig.stats.enabled;
                 }
+                
+                // 初始化调试配置
+                if (currentSiteConfig.debugConfig) {
+                    const debugConfig = currentSiteConfig.debugConfig;
+                    
+                    // 设置基本配置
+                    if (debugEnabled) debugEnabled.checked = debugConfig.enabled || false;
+                    if (debugLevel) debugLevel.value = debugConfig.level || 'ERROR';
+                    if (debugTimestamp) debugTimestamp.checked = debugConfig.timestamp !== false;
+                    
+                    // 设置分类控制
+                    if (debugConfig.categories) {
+                        Object.keys(debugCategories).forEach(category => {
+                            if (debugCategories[category]) {
+                                debugCategories[category].checked = debugConfig.categories[category] || false;
+                            }
+                        });
+                    }
+                }
             }
             
             // 调用初始化函数
@@ -4837,6 +5318,141 @@
         };
         
         return colorMap[color.toLowerCase()] || '#000000';
+    }
+
+    /**
+     * 初始化虚拟鼠标动画样式
+     * 添加呼吸缩放和脉冲波纹效果
+     */
+    function initVirtualMouseAnimations() {
+        try {
+            const animationCSS = `
+                /* 虚拟鼠标呼吸缩放动画 */
+                @keyframes virtualMouseBreathing {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.1); }
+                    100% { transform: scale(1); }
+                }
+                
+                /* 虚拟鼠标脉冲波纹动画 */
+                @keyframes virtualMousePulse {
+                    0% {
+                        transform: scale(1);
+                        opacity: 0.8;
+                    }
+                    50% {
+                        transform: scale(1.3);
+                        opacity: 0.3;
+                    }
+                    100% {
+                        transform: scale(1.5);
+                        opacity: 0;
+                    }
+                }
+                
+                /* 虚拟鼠标出现动画 */
+                @keyframes virtualMouseAppear {
+                    0% {
+                        transform: scale(0);
+                        opacity: 0;
+                    }
+                    60% {
+                        transform: scale(1.2);
+                        opacity: 0.9;
+                    }
+                    100% {
+                        transform: scale(1);
+                        opacity: 1;
+                    }
+                }
+                
+                /* 虚拟鼠标消失动画 */
+                @keyframes virtualMouseDisappear {
+                    0% {
+                        transform: scale(1);
+                        opacity: 1;
+                    }
+                    100% {
+                        transform: scale(0.8);
+                        opacity: 0;
+                    }
+                }
+                
+                /* 呼吸动画类 */
+                .virtual-mouse-breathing {
+                    animation: virtualMouseBreathing 2s ease-in-out infinite;
+                    will-change: transform;
+                }
+                
+                /* 脉冲动画类 */
+                .virtual-mouse-pulse {
+                    animation: virtualMousePulse 2s ease-out infinite;
+                    will-change: transform, opacity;
+                }
+                
+                /* 出现动画类 */
+                .virtual-mouse-appear {
+                    animation: virtualMouseAppear 0.3s ease-out forwards;
+                }
+                
+                /* 消失动画类 */
+                .virtual-mouse-disappear {
+                    animation: virtualMouseDisappear 0.2s ease-in forwards;
+                }
+                
+                /* 低强度动画 */
+                .virtual-mouse-low-intensity .virtual-mouse-breathing {
+                    animation-duration: 3s;
+                }
+                
+                .virtual-mouse-low-intensity .virtual-mouse-pulse {
+                    animation-duration: 3s;
+                }
+                
+                /* 高强度动画 */
+                .virtual-mouse-high-intensity .virtual-mouse-breathing {
+                    animation-duration: 1.5s;
+                }
+                
+                .virtual-mouse-high-intensity .virtual-mouse-pulse {
+                    animation-duration: 1.5s;
+                }
+                
+                /* 性能优化：减少动画复杂度 */
+                .virtual-mouse-performance-low .virtual-mouse-pulse {
+                    display: none;
+                }
+                
+                .virtual-mouse-performance-low .virtual-mouse-breathing {
+                    animation-duration: 4s;
+                }
+                
+                /* 响应式动画调整 */
+                @media (max-width: 768px) {
+                    .virtual-mouse-breathing {
+                        animation-duration: 2.5s;
+                    }
+                    
+                    .virtual-mouse-pulse {
+                        animation-duration: 2.5s;
+                    }
+                }
+                
+                @media (prefers-reduced-motion: reduce) {
+                    .virtual-mouse-breathing,
+                    .virtual-mouse-pulse,
+                    .virtual-mouse-appear,
+                    .virtual-mouse-disappear {
+                        animation: none !important;
+                    }
+                }
+            `;
+            
+            addStyle(animationCSS);
+            console.log('[反监控] 虚拟鼠标动画样式初始化完成');
+        } catch (e) {
+            console.error('[反监控] 初始化虚拟鼠标动画样式失败:', e);
+        }
     }
 
     /**

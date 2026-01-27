@@ -16,13 +16,135 @@
 (function() {
     'use strict';
 
+    // Debug level definitions
+    const DEBUG_LEVELS = {
+        ERROR: 0,    // Error messages only
+        WARN: 1,     // Warning messages  
+        INFO: 2,     // General information
+        DEBUG: 3,    // Debug information
+        VERBOSE: 4   // Verbose information
+    };
+
+    // Debug level mapping
+    const DEBUG_LEVEL_NAMES = {
+        'ERROR': DEBUG_LEVELS.ERROR,
+        'WARN': DEBUG_LEVELS.WARN,
+        'INFO': DEBUG_LEVELS.INFO,
+        'DEBUG': DEBUG_LEVELS.DEBUG,
+        'VERBOSE': DEBUG_LEVELS.VERBOSE
+    };
+
+    /**
+     * Smart debug log manager
+     * Provides hierarchical and categorized debug output control
+     */
+    class DebugLogger {
+        constructor() {
+            this.currentLevel = DEBUG_LEVELS.ERROR;
+            this.enabled = false;
+            this.categories = {
+                virtualMouse: false,
+                eventBlocking: false,
+                deviceInfo: false,
+                config: false,
+                animation: false
+            };
+            this.consoleOnly = true;
+            this.timestamp = true;
+        }
+
+        /**
+         * Update debug configuration
+         */
+        updateConfig(config) {
+            if (!config) return;
+            
+            this.enabled = config.enabled || false;
+            this.currentLevel = DEBUG_LEVEL_NAMES[config.level] || DEBUG_LEVELS.ERROR;
+            this.categories = { ...this.categories, ...config.categories };
+            this.consoleOnly = config.consoleOnly !== false;
+            this.timestamp = config.timestamp !== false;
+        }
+
+        /**
+         * Check if log should be output
+         */
+        shouldLog(level, category) {
+            if (!this.enabled) return false;
+            if (level > this.currentLevel) return false;
+            if (category && !this.categories[category]) return false;
+            return true;
+        }
+
+        /**
+         * Format log prefix
+         */
+        formatPrefix(level, category) {
+            const levelNames = ['ERROR', 'WARN', 'INFO', 'DEBUG', 'VERBOSE'];
+            const levelName = levelNames[level] || 'UNKNOWN';
+            const timestamp = this.timestamp ? `[${new Date().toISOString()}] ` : '';
+            const categoryStr = category ? `[${category}] ` : '';
+            return `${timestamp}[Anti-Surveillance][${levelName}]${categoryStr}`;
+        }
+
+        /**
+         * Output log
+         */
+        log(level, category, ...args) {
+            if (!this.shouldLog(level, category)) return;
+
+            const prefix = this.formatPrefix(level, category);
+            const message = args.length === 1 && typeof args[0] === 'string' ? args[0] : args;
+            
+            switch (level) {
+                case DEBUG_LEVELS.ERROR:
+                    console.error(prefix, message);
+                    break;
+                case DEBUG_LEVELS.WARN:
+                    console.warn(prefix, message);
+                    break;
+                case DEBUG_LEVELS.INFO:
+                    console.info(prefix, message);
+                    break;
+                case DEBUG_LEVELS.DEBUG:
+                case DEBUG_LEVELS.VERBOSE:
+                default:
+                    console.log(prefix, message);
+                    break;
+            }
+        }
+
+        // Convenience methods
+        error(category, ...args) { this.log(DEBUG_LEVELS.ERROR, category, ...args); }
+        warn(category, ...args) { this.log(DEBUG_LEVELS.WARN, category, ...args); }
+        info(category, ...args) { this.log(DEBUG_LEVELS.INFO, category, ...args); }
+        debug(category, ...args) { this.log(DEBUG_LEVELS.DEBUG, category, ...args); }
+        verbose(category, ...args) { this.log(DEBUG_LEVELS.VERBOSE, category, ...args); }
+    }
+
+    // Create global debug logger instance
+    const debugLogger = new DebugLogger();
+
     // Debug mode toggle: Set to false for production, true for development debugging
     const DEBUG_MODE = false;
 
-    // Unified logging helper function
+    // Unified logging helper function (maintain backward compatibility)
     function debugLog(...args) {
         if (DEBUG_MODE) {
             console.log('[Anti-Surveillance]', ...args);
+        }
+    }
+
+    /**
+     * Update debug configuration
+     * Read debug settings from user configuration and apply to debug logger
+     */
+    function updateDebugConfig() {
+        try {
+            const config = getCurrentSiteConfig().debugConfig || {};
+            debugLogger.updateConfig(config);
+        } catch (e) {
+            console.error('[Anti-Surveillance] Failed to update debug config:', e);
         }
     }
     
@@ -124,6 +246,12 @@
     };
 
     console.log('[Anti-Surveillance Script] Starting to load...');
+
+    // Initialize debug configuration
+    updateDebugConfig();
+
+    // Initialize virtual mouse animation styles
+    initVirtualMouseAnimations();
 
     /**
      * Default website configuration template - All blocking items are disabled by default
@@ -277,6 +405,27 @@
                 enabled: false,                  // Whether to enable fixed position
                 x: 0,                            // Fixed X coordinate
                 y: 0                             // Fixed Y coordinate
+            },
+            animation: {                       // Animation effect configuration
+                enabled: true,                 // Whether to enable animations
+                breathing: true,               // Breathing scale animation
+                pulse: false,                  // Pulse ripple effect (disabled by default)
+                intensity: 'medium',           // Animation intensity: low/medium/high
+                duration: 2000,                // Animation cycle (milliseconds)
+                performanceMode: 'auto'        // Performance mode: auto/high/low
+            },
+            debugConfig: {                     // Debug output configuration
+                enabled: false,                // Whether to enable debug output
+                level: 'ERROR',                // Output level: ERROR/WARN/INFO/DEBUG/VERBOSE
+                categories: {                  // Category control
+                    virtualMouse: false,       // Virtual mouse related
+                    eventBlocking: false,      // Event blocking related
+                    deviceInfo: false,         // Device info related
+                    config: false,             // Configuration related
+                    animation: false           // Animation related
+                },
+                consoleOnly: true,             // Console output only
+                timestamp: true                // Show timestamp
             }
         }
     };
@@ -1465,10 +1614,11 @@
                 
                 console.log('[Anti-Surveillance Script] Virtual mouse element styling complete');
                 
-                // Add mouse style elements (including main cursor and click indicator)
+                // Add mouse style elements (including main cursor, click indicator and animation effects)
                 virtualMouse.innerHTML = `
                     <div class="virtual-mouse-main" style="display: block; position: absolute; top: 0; left: 0;"></div>
                     <div class="virtual-mouse-click"></div>
+                    <div class="virtual-mouse-pulse-ring"></div>
                 `;
                 
                 console.log('[Anti-Surveillance Script] Virtual mouse HTML content set complete');
@@ -1589,18 +1739,13 @@
             const config = getCurrentSiteConfig().virtualMouse || {};
             const mainCursor = virtualMouse.querySelector('.virtual-mouse-main');
             const clickIndicator = virtualMouse.querySelector('.virtual-mouse-click');
+            const pulseRing = virtualMouse.querySelector('.virtual-mouse-pulse-ring');
             
-            // Set different transition effects based on path mode
-            if (config.pathMode === 'smooth') {
-                // Smooth mode uses longer transition time
-                virtualMouse.style.transition = 'left 0.3s ease-out, top 0.3s ease-out';
-            } else if (config.pathMode === 'hover') {
-                // Hover mode uses medium transition time
-                virtualMouse.style.transition = 'left 0.2s ease-out, top 0.2s ease-out';
-            } else {
-                // Other modes use short transition time, add slight jitter effect
-                virtualMouse.style.transition = 'left 0.1s ease-out, top 0.1s ease-out';
-            }
+            // Disable container transition effects to ensure real-time position updates
+            // Virtual mouse movement should be controlled by JavaScript, not CSS transitions
+            virtualMouse.style.transition = 'none';
+            
+            console.log('[Anti-Surveillance] Disabled virtual mouse container transition effects for real-time updates');
             
             // Main cursor style - use user-set cursor size
             const cursorSize = config.cursorSize || 40; // Directly use user-set value, no longer limit range
@@ -1631,10 +1776,27 @@
             
             // Ensure virtual mouse is visible - force display
             const isEnabled = getCurrentSiteConfig().virtualMouse?.enabled || false;
-            virtualMouse.style.display = isEnabled ? 'block' : 'none';
-            if (isEnabled) {
+            const isMainWindow = isInMainWindow();
+            
+            console.log('[Anti-Surveillance] Virtual mouse display status check:', {
+                isEnabled: isEnabled,
+                isMainWindow: isMainWindow,
+                virtualMouseExists: !!virtualMouse,
+                inDocument: virtualMouse ? document.body.contains(virtualMouse) : false
+            });
+            
+            if (isEnabled && isMainWindow && virtualMouse && document.body.contains(virtualMouse)) {
+                virtualMouse.style.display = 'block';
                 virtualMouse.style.visibility = 'visible';
                 virtualMouse.style.opacity = '1';
+            } else {
+                virtualMouse.style.display = 'none';
+                console.log('[Anti-Surveillance] Virtual mouse hidden, reason:', {
+                    isEnabled: isEnabled,
+                    isMainWindow: isMainWindow,
+                    virtualMouseExists: !!virtualMouse,
+                    inDocument: virtualMouse ? document.body.contains(virtualMouse) : false
+                });
             }
             
             // Ensure z-index is high enough
@@ -1645,6 +1807,9 @@
             virtualMouse.style.pointerEvents = 'none';
             virtualMouse.style.transform = 'translate(-50%, -50%)';
             
+            // Apply animation effects
+            applyVirtualMouseAnimations(virtualMouse, mainCursor, pulseRing, config);
+            
             console.log(`[Anti-Surveillance] Virtual mouse style updated - Display: ${isEnabled}, Size: ${cursorSize}px, Main cursor display: ${mainCursor.style.display}`);
         } catch (e) {
             console.error('[Anti-Surveillance Script] Update virtual mouse style failed:', e);
@@ -1652,6 +1817,141 @@
     }
     
 n    /**
+     * Apply virtual mouse animation effects
+     * Dynamically add or remove animation classes based on configuration
+     */
+    function applyVirtualMouseAnimations(virtualMouse, mainCursor, pulseRing, config) {
+        try {
+            // Get animation configuration
+            const animationConfig = config.animation || {};
+            const isEnabled = animationConfig.enabled !== false;
+            const breathingEnabled = animationConfig.breathing !== false;
+            const pulseEnabled = animationConfig.pulse !== false;
+            const intensity = animationConfig.intensity || 'medium';
+            const performanceMode = animationConfig.performanceMode || 'auto';
+            
+            // Clear all animation classes
+            virtualMouse.classList.remove('virtual-mouse-breathing', 'virtual-mouse-pulse', 
+                                       'virtual-mouse-appear', 'virtual-mouse-disappear',
+                                       'virtual-mouse-low-intensity', 'virtual-mouse-high-intensity',
+                                       'virtual-mouse-performance-low', 'virtual-mouse-performance-high');
+            
+            if (mainCursor) {
+                mainCursor.classList.remove('virtual-mouse-breathing', 'virtual-mouse-pulse');
+            }
+            
+            if (pulseRing) {
+                pulseRing.classList.remove('virtual-mouse-pulse');
+            }
+            
+            if (!isEnabled) {
+                console.log('[Anti-Surveillance] Virtual mouse animations disabled');
+                return;
+            }
+            
+            // Detect performance mode
+            const detectedPerformanceMode = detectPerformanceMode(performanceMode);
+            
+            // Apply intensity level
+            if (intensity === 'low') {
+                virtualMouse.classList.add('virtual-mouse-low-intensity');
+            } else if (intensity === 'high') {
+                virtualMouse.classList.add('virtual-mouse-high-intensity');
+            }
+            
+            // Apply performance mode
+            if (detectedPerformanceMode === 'low') {
+                virtualMouse.classList.add('virtual-mouse-performance-low');
+            } else if (detectedPerformanceMode === 'high') {
+                virtualMouse.classList.add('virtual-mouse-performance-high');
+            }
+            
+            // Apply breathing animation
+            if (breathingEnabled && mainCursor && detectedPerformanceMode !== 'minimal') {
+                mainCursor.classList.add('virtual-mouse-breathing');
+                
+                // Set animation duration
+                const duration = (animationConfig.duration || 2000) / 1000;
+                mainCursor.style.animationDuration = `${duration}s`;
+            }
+            
+            // Apply pulse animation
+            if (pulseEnabled && pulseRing && detectedPerformanceMode !== 'low' && detectedPerformanceMode !== 'minimal') {
+                // Set pulse ring style
+                const cursorSize = config.cursorSize || 40;
+                pulseRing.style.position = 'absolute';
+                pulseRing.style.width = `${cursorSize}px`;
+                pulseRing.style.height = `${cursorSize}px`;
+                pulseRing.style.borderRadius = '50%';
+                pulseRing.style.border = `2px solid ${config.cursorColor || '#ff0000'}`;
+                pulseRing.style.top = '0';
+                pulseRing.style.left = '0';
+                pulseRing.style.pointerEvents = 'none';
+                pulseRing.style.transform = 'translate(-50%, -50%)';
+                
+                pulseRing.classList.add('virtual-mouse-pulse');
+                
+                // Set animation duration
+                const duration = (animationConfig.duration || 2000) / 1000;
+                pulseRing.style.animationDuration = `${duration}s`;
+            }
+            
+            console.log('[Anti-Surveillance] Virtual mouse animations applied:', {
+                enabled: isEnabled,
+                breathing: breathingEnabled,
+                pulse: pulseEnabled,
+                intensity: intensity,
+                performanceMode: detectedPerformanceMode,
+                duration: animationConfig.duration || 2000
+            });
+            
+        } catch (e) {
+            console.error('[Anti-Surveillance] Failed to apply virtual mouse animations:', e);
+        }
+    }
+    
+    /**
+     * Detect performance mode
+     * Automatically adjust animation complexity based on device performance and user settings
+     */
+    function detectPerformanceMode(userMode) {
+        if (userMode === 'high') return 'high';
+        if (userMode === 'low') return 'low';
+        
+        // Auto detection mode
+        try {
+            // Check hardware concurrency
+            const concurrency = navigator.hardwareConcurrency || 4;
+            
+            // Check device memory
+            const memory = navigator.deviceMemory || 4;
+            
+            // Check if mobile device
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            // Check if reduced motion preference is enabled
+            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            
+            if (prefersReducedMotion) {
+                return 'minimal';
+            }
+            
+            if (isMobile || concurrency < 4 || memory < 2) {
+                return 'low';
+            }
+            
+            if (concurrency >= 8 && memory >= 8) {
+                return 'high';
+            }
+            
+            return 'medium';
+        } catch (e) {
+            console.warn('[Anti-Surveillance] Performance detection failed, using default mode:', e);
+            return 'medium';
+        }
+    }
+    
+    /**
      * Show click effect
      */
     function showClickEffect() {
@@ -2545,12 +2845,12 @@ n    /**
             smoothMoveState.moveProgress = 0;
             
             console.log('[Anti-Surveillance] Reset path mode state variables and smooth movement state');
-            
-            // Initialize smooth movement state
-            smoothMoveState.targetX = currentPos.x;
-            smoothMoveState.targetY = currentPos.y;
-            smoothMoveState.currentDisplayX = currentPos.x;
-            smoothMoveState.currentDisplayY = currentPos.y;
+            console.log('[Anti-Surveillance] Initialize coordinates:', {
+                targetX: smoothMoveState.targetX,
+                targetY: smoothMoveState.targetY,
+                currentDisplayX: smoothMoveState.currentDisplayX,
+                currentDisplayY: smoothMoveState.currentDisplayY
+            });
             
             // Initialize Bezier curve and physics model parameters
             smoothMoveState.bezierPoints = [];
@@ -2669,6 +2969,17 @@ n    /**
                 // Use Bezier curves and physics models for more realistic movement
                 let displayX, displayY;
                 
+                // Initialize display position, ensure valid coordinate values
+                if (smoothMoveState.currentDisplayX === null || smoothMoveState.currentDisplayX === undefined ||
+                    smoothMoveState.currentDisplayY === null || smoothMoveState.currentDisplayY === undefined) {
+                    smoothMoveState.currentDisplayX = currentPos.x || window.innerWidth / 2;
+                    smoothMoveState.currentDisplayY = currentPos.y || window.innerHeight / 2;
+                    console.log('[Anti-Surveillance] Initialize display position:', {
+                        currentDisplayX: smoothMoveState.currentDisplayX,
+                        currentDisplayY: smoothMoveState.currentDisplayY
+                    });
+                }
+                
                 // Check if movement should be paused
                 if (shouldPause()) {
                     // Maintain current position when paused
@@ -2738,11 +3049,15 @@ n    /**
                 }
                 
                 // Check if in main window and virtual mouse exists
-                if (virtualMouse && window === window.top) {
+                if (virtualMouse && window === window.top && document.body.contains(virtualMouse)) {
+                    // Boundary check, ensure coordinates are within screen range
+                    const boundedX = Math.max(0, Math.min(window.innerWidth, displayX));
+                    const boundedY = Math.max(0, Math.min(window.innerHeight, displayY));
+                    
                     // Only update DOM element position in main window
                     // Since transform: translate(-50%, -50%) is used, directly set left and top
-                    virtualMouse.style.left = `${displayX}px`;
-                    virtualMouse.style.top = `${displayY}px`;
+                    virtualMouse.style.left = `${boundedX}px`;
+                    virtualMouse.style.top = `${boundedY}px`;
                     
                     // Ensure virtual mouse is visible
                     virtualMouse.style.display = 'block';
@@ -2750,10 +3065,12 @@ n    /**
                     virtualMouse.style.opacity = '1';
                     
                     console.log('[Anti-Surveillance] Update virtual mouse position:', {
+                        originalX: displayX,
+                        originalY: displayY,
+                        boundedX: boundedX,
+                        boundedY: boundedY,
                         targetX: smoothMoveState.targetX,
                         targetY: smoothMoveState.targetY,
-                        displayX: displayX,
-                        displayY: displayY,
                         progress: smoothMoveState.moveProgress,
                         left: virtualMouse.style.left,
                         top: virtualMouse.style.top
@@ -2837,9 +3154,19 @@ n    /**
                     mainCursor.style.opacity = '1';
                 }
                 
-                // Set initial position
-                virtualMouse.style.left = `${smoothMoveState.currentDisplayX}px`;
-                virtualMouse.style.top = `${smoothMoveState.currentDisplayY}px`;
+                // Set initial position, ensure coordinates are valid
+                const initialX = smoothMoveState.currentDisplayX || window.innerWidth / 2;
+                const initialY = smoothMoveState.currentDisplayY || window.innerHeight / 2;
+                
+                virtualMouse.style.left = `${initialX}px`;
+                virtualMouse.style.top = `${initialY}px`;
+                
+                console.log('[Anti-Surveillance] Set virtual mouse initial position:', {
+                    initialX: initialX,
+                    initialY: initialY,
+                    currentDisplayX: smoothMoveState.currentDisplayX,
+                    currentDisplayY: smoothMoveState.currentDisplayY
+                });
                 
                 debugLog('Virtual mouse element status:', {
                     display: virtualMouse.style.display,
@@ -4837,6 +5164,141 @@ n    /**
         };
         
         return colorMap[color.toLowerCase()] || '#000000';
+    }
+
+    /**
+     * Initialize virtual mouse animation styles
+     * Add breathing scale and pulse ripple effects
+     */
+    function initVirtualMouseAnimations() {
+        try {
+            const animationCSS = `
+                /* Virtual mouse breathing scale animation */
+                @keyframes virtualMouseBreathing {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.1); }
+                    100% { transform: scale(1); }
+                }
+                
+                /* Virtual mouse pulse ripple animation */
+                @keyframes virtualMousePulse {
+                    0% {
+                        transform: scale(1);
+                        opacity: 0.8;
+                    }
+                    50% {
+                        transform: scale(1.3);
+                        opacity: 0.3;
+                    }
+                    100% {
+                        transform: scale(1.5);
+                        opacity: 0;
+                    }
+                }
+                
+                /* Virtual mouse appear animation */
+                @keyframes virtualMouseAppear {
+                    0% {
+                        transform: scale(0);
+                        opacity: 0;
+                    }
+                    60% {
+                        transform: scale(1.2);
+                        opacity: 0.9;
+                    }
+                    100% {
+                        transform: scale(1);
+                        opacity: 1;
+                    }
+                }
+                
+                /* Virtual mouse disappear animation */
+                @keyframes virtualMouseDisappear {
+                    0% {
+                        transform: scale(1);
+                        opacity: 1;
+                    }
+                    100% {
+                        transform: scale(0.8);
+                        opacity: 0;
+                    }
+                }
+                
+                /* Breathing animation class */
+                .virtual-mouse-breathing {
+                    animation: virtualMouseBreathing 2s ease-in-out infinite;
+                    will-change: transform;
+                }
+                
+                /* Pulse animation class */
+                .virtual-mouse-pulse {
+                    animation: virtualMousePulse 2s ease-out infinite;
+                    will-change: transform, opacity;
+                }
+                
+                /* Appear animation class */
+                .virtual-mouse-appear {
+                    animation: virtualMouseAppear 0.3s ease-out forwards;
+                }
+                
+                /* Disappear animation class */
+                .virtual-mouse-disappear {
+                    animation: virtualMouseDisappear 0.2s ease-in forwards;
+                }
+                
+                /* Low intensity animation */
+                .virtual-mouse-low-intensity .virtual-mouse-breathing {
+                    animation-duration: 3s;
+                }
+                
+                .virtual-mouse-low-intensity .virtual-mouse-pulse {
+                    animation-duration: 3s;
+                }
+                
+                /* High intensity animation */
+                .virtual-mouse-high-intensity .virtual-mouse-breathing {
+                    animation-duration: 1.5s;
+                }
+                
+                .virtual-mouse-high-intensity .virtual-mouse-pulse {
+                    animation-duration: 1.5s;
+                }
+                
+                /* Performance optimization: reduce animation complexity */
+                .virtual-mouse-performance-low .virtual-mouse-pulse {
+                    display: none;
+                }
+                
+                .virtual-mouse-performance-low .virtual-mouse-breathing {
+                    animation-duration: 4s;
+                }
+                
+                /* Responsive animation adjustments */
+                @media (max-width: 768px) {
+                    .virtual-mouse-breathing {
+                        animation-duration: 2.5s;
+                    }
+                    
+                    .virtual-mouse-pulse {
+                        animation-duration: 2.5s;
+                    }
+                }
+                
+                @media (prefers-reduced-motion: reduce) {
+                    .virtual-mouse-breathing,
+                    .virtual-mouse-pulse,
+                    .virtual-mouse-appear,
+                    .virtual-mouse-disappear {
+                        animation: none !important;
+                    }
+                }
+            `;
+            
+            addStyle(animationCSS);
+            console.log('[Anti-Surveillance] Virtual mouse animation styles initialized');
+        } catch (e) {
+            console.error('[Anti-Surveillance] Failed to initialize virtual mouse animation styles:', e);
+        }
     }
 
     /**
