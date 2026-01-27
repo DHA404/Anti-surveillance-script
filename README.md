@@ -159,10 +159,6 @@ Or access settings via Tampermonkey menu
 
 ### 支持的平台 | Supported Platforms
 - ✅ **Zoom**: 在线会议和网课
-- ✅ **腾讯课堂**: 国内主流网课平台
-- ✅ **钉钉**: 企业和学校使用
-- ✅ **网易云课堂**: 在线学习平台
-- ✅ **智慧树**: 高校网络课程
 - ✅ **超星学习通**: 高校教学平台
 - ✅ **其他平台**: 大部分基于Web的网课系统
 
@@ -173,27 +169,6 @@ Or access settings via Tampermonkey menu
 **Zhihuishu**: University online courses
 **Chaoxing Learning**: University teaching platform
 **Other Platforms**: Most Web-based online course systems
-
-### 平台特定设置 | Platform-Specific Settings
-```javascript
-// 腾讯课堂示例配置
-{
-  "enabled": true,
-  "virtualMouse": {
-    "enabled": true,
-    "moveInterval": 300,
-    "avoidElements": [".video-controls", ".chat-panel"]
-  },
-  "eventBlocking": {
-    "mouseEvents": {
-      "mousemove": true,
-      "click": false
-    }
-  }
-}
-```
-
----
 
 ## � 高级用法 | Advanced Usage
 
