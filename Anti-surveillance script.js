@@ -1720,10 +1720,10 @@
             }
         } catch (e) {
             console.error('[Anti-Surveillance Script] Generate hover points failed:', e);
-            // Create a default hover points array when error occurs
+            // Create a default hover points array when error occurs, use random position instead of screen center
             hoverPoints = [{
-                x: window.innerWidth / 2,
-                y: window.innerHeight / 2
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * window.innerHeight
             }];
             currentHoverIndex = 0;
         }
@@ -2877,10 +2877,12 @@ n    /**
                 
                 // Ensure currentPos is a valid object
                 if (!currentPos || typeof currentPos !== 'object') {
+                    // Use random position instead of screen center position
                     currentPos = {
                         x: Math.random() * window.innerWidth,
                         y: Math.random() * window.innerHeight
                     };
+                    console.log('[Anti-Surveillance] Reset currentPos to random position:', currentPos);
                 }
                 
                 // Ensure currentPos has valid x and y properties
@@ -2972,11 +2974,13 @@ n    /**
                 // Initialize display position, ensure valid coordinate values
                 if (smoothMoveState.currentDisplayX === null || smoothMoveState.currentDisplayX === undefined ||
                     smoothMoveState.currentDisplayY === null || smoothMoveState.currentDisplayY === undefined) {
-                    smoothMoveState.currentDisplayX = currentPos.x || window.innerWidth / 2;
-                    smoothMoveState.currentDisplayY = currentPos.y || window.innerHeight / 2;
+                    // Use current position instead of screen center position
+                    smoothMoveState.currentDisplayX = currentPos.x || Math.random() * window.innerWidth;
+                    smoothMoveState.currentDisplayY = currentPos.y || Math.random() * window.innerHeight;
                     console.log('[Anti-Surveillance] Initialize display position:', {
                         currentDisplayX: smoothMoveState.currentDisplayX,
-                        currentDisplayY: smoothMoveState.currentDisplayY
+                        currentDisplayY: smoothMoveState.currentDisplayY,
+                        currentPos: currentPos
                     });
                 }
                 
@@ -3155,8 +3159,9 @@ n    /**
                 }
                 
                 // Set initial position, ensure coordinates are valid
-                const initialX = smoothMoveState.currentDisplayX || window.innerWidth / 2;
-                const initialY = smoothMoveState.currentDisplayY || window.innerHeight / 2;
+                // Use current position instead of screen center position
+                const initialX = smoothMoveState.currentDisplayX || currentPos?.x || Math.random() * window.innerWidth;
+                const initialY = smoothMoveState.currentDisplayY || currentPos?.y || Math.random() * window.innerHeight;
                 
                 virtualMouse.style.left = `${initialX}px`;
                 virtualMouse.style.top = `${initialY}px`;

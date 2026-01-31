@@ -1719,10 +1719,10 @@
             }
         } catch (e) {
             console.error('[反监控脚本] 生成悬停点失败:', e);
-            // 出错时创建一个默认的悬停点数组
+            // 出错时创建一个默认的悬停点数组，使用随机位置而不是屏幕中心
             hoverPoints = [{
-                x: window.innerWidth / 2,
-                y: window.innerHeight / 2
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * window.innerHeight
             }];
             currentHoverIndex = 0;
         }
@@ -2847,10 +2847,12 @@
                 
                 // 确保 currentPos 是一个有效的对象
                 if (!currentPos || typeof currentPos !== 'object') {
+                    // 使用随机位置而不是屏幕中心位置
                     currentPos = {
                         x: Math.random() * window.innerWidth,
                         y: Math.random() * window.innerHeight
                     };
+                    console.log('[反监控] 重置currentPos为随机位置:', currentPos);
                 }
                 
                 // 确保 currentPos 有有效的 x 和 y 属性
@@ -2942,11 +2944,13 @@
                 // 初始化显示位置，确保有有效的坐标值
                 if (smoothMoveState.currentDisplayX === null || smoothMoveState.currentDisplayX === undefined ||
                     smoothMoveState.currentDisplayY === null || smoothMoveState.currentDisplayY === undefined) {
-                    smoothMoveState.currentDisplayX = currentPos.x || window.innerWidth / 2;
-                    smoothMoveState.currentDisplayY = currentPos.y || window.innerHeight / 2;
+                    // 使用当前位置而不是屏幕中心位置
+                    smoothMoveState.currentDisplayX = currentPos.x || Math.random() * window.innerWidth;
+                    smoothMoveState.currentDisplayY = currentPos.y || Math.random() * window.innerHeight;
                     console.log('[反监控] 初始化显示位置:', {
                         currentDisplayX: smoothMoveState.currentDisplayX,
-                        currentDisplayY: smoothMoveState.currentDisplayY
+                        currentDisplayY: smoothMoveState.currentDisplayY,
+                        currentPos: currentPos
                     });
                 }
                 
@@ -3125,8 +3129,9 @@
                 }
                 
                 // 设置初始位置，确保坐标有效
-                const initialX = smoothMoveState.currentDisplayX || window.innerWidth / 2;
-                const initialY = smoothMoveState.currentDisplayY || window.innerHeight / 2;
+                // 使用当前位置而不是屏幕中心位置
+                const initialX = smoothMoveState.currentDisplayX || currentPos?.x || Math.random() * window.innerWidth;
+                const initialY = smoothMoveState.currentDisplayY || currentPos?.y || Math.random() * window.innerHeight;
                 
                 virtualMouse.style.left = `${initialX}px`;
                 virtualMouse.style.top = `${initialY}px`;
