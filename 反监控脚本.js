@@ -4705,6 +4705,41 @@
             });
 
             /**
+             * 保存当前网站配置
+             * 将当前网站的配置保存到全局配置中
+             */
+            function saveCurrentSiteConfig() {
+                try {
+                    const currentSiteKey = globalConfig.currentSiteKey;
+                    if (!currentSiteKey) {
+                        console.warn('[反监控] 没有当前网站键，无法保存配置');
+                        return;
+                    }
+                    
+                    // 获取当前网站配置
+                    const currentConfig = getCurrentSiteConfig();
+                    
+                    // 确保当前网站配置已添加到globalConfig.sites
+                    if (!globalConfig.sites[currentSiteKey]) {
+                        globalConfig.sites[currentSiteKey] = currentConfig;
+                    } else {
+                        // 更新现有网站配置
+                        globalConfig.sites[currentSiteKey] = currentConfig;
+                    }
+                    
+                    // 保存到GM_setValue
+                    if (typeof GM_setValue === 'function') {
+                        GM_setValue('antiMonitorGlobalConfig', globalConfig);
+                        console.log(`[反监控] 已保存网站配置: ${currentSiteKey}`);
+                    } else {
+                        console.log('[反监控脚本] 非油猴环境，配置未保存');
+                    }
+                } catch (e) {
+                    console.error('[反监控] 保存当前网站配置失败:', e);
+                }
+            }
+
+            /**
              * 从UI更新调试配置
              */
             function updateDebugConfigFromUI() {

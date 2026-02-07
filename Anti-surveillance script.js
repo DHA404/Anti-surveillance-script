@@ -600,6 +600,41 @@
     }
 
     /**
+     * Save current site configuration
+     * Save the current website configuration to the global configuration
+     */
+    function saveCurrentSiteConfig() {
+        try {
+            const currentSiteKey = globalConfig.currentSiteKey;
+            if (!currentSiteKey) {
+                console.warn('[Anti-Surveillance] No current site key, cannot save configuration');
+                return;
+            }
+            
+            // Get current website configuration
+            const currentConfig = getCurrentSiteConfig();
+            
+            // Ensure current website configuration is added to globalConfig.sites
+            if (!globalConfig.sites[currentSiteKey]) {
+                globalConfig.sites[currentSiteKey] = currentConfig;
+            } else {
+                // Update existing website configuration
+                globalConfig.sites[currentSiteKey] = currentConfig;
+            }
+            
+            // Save to GM_setValue
+            if (typeof GM_setValue === 'function') {
+                GM_setValue('antiMonitorGlobalConfig', globalConfig);
+                console.log(`[Anti-Surveillance] Saved site configuration: ${currentSiteKey}`);
+            } else {
+                console.log('[Anti-Surveillance Script] Non-Tampermonkey environment, configuration not saved');
+            }
+        } catch (e) {
+            console.error('[Anti-Surveillance] Failed to save current site configuration:', e);
+        }
+    }
+
+    /**
      * Get list of events to block for current website
      */
     function getEventsToBlock() {
