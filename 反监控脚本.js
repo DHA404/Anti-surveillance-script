@@ -247,9 +247,6 @@
     
     console.log('[反监控脚本] 开始加载...');
 
-    // 初始化调试配置
-    updateDebugConfig();
-
     // 初始化虚拟鼠标动画样式
     initVirtualMouseAnimations();
 
@@ -539,6 +536,9 @@
         }
     }
     ensureConfigIntegrity(); // 初始化时立即执行配置检查
+
+    // 初始化调试配置（必须在配置定义之后调用）
+    updateDebugConfig();
 
     /**
      * 获取当前网站的配置

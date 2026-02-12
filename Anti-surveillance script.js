@@ -247,9 +247,6 @@
 
     console.log('[Anti-Surveillance Script] Starting to load...');
 
-    // Initialize debug configuration
-    updateDebugConfig();
-
     // Initialize virtual mouse animation styles
     initVirtualMouseAnimations();
 
@@ -539,6 +536,9 @@
         }
     }
     ensureConfigIntegrity(); // Execute configuration check immediately during initialization
+
+    // Initialize debug configuration (must be called after configuration is defined)
+    updateDebugConfig();
 
     /**
      * Get current website configuration
